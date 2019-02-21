@@ -1,42 +1,19 @@
-const fullscreen_id_namespace = `windowed_fullscreen_is_underrated`;
-
-const fullscreen_select = `${fullscreen_id_namespace}_select`;
-const fullscreen_active = `${fullscreen_id_namespace}_active`;
-const fullscreen_element_cloned = `${fullscreen_id_namespace}_clone`;
-const fullscreen_parent = `${fullscreen_id_namespace}_parent`;
-const body_class = `${fullscreen_id_namespace}_body`;
-
-const popup_class = `${fullscreen_id_namespace}_popup`;
-
-const max_z_index = '2147483647';
-
-
 let fullscreenchange_aliasses = [
   'fullscreenchange',
   'webkitfullscreenchange',
-  'mozfullscreenchange',
-  'MSFullscreenChange',
 ];
 let requestFullscreen_aliasses = [
   'requestFullscreen',
-  'mozRequestFullScreen',
-  'webkitRequestFullscreen',
   'webkitRequestFullScreen',
-  'msRequestFullscreen',
 ];
 let exitFullscreen_aliasses = [
   'exitFullscreen',
   'webkitExitFullscreen',
   'webkitCancelFullScreen',
-  'mozCancelFullScreen',
-  'msExitFullscreen',
 ];
 let fullscreenelement_aliasses = [
   'fullscreenElement',
   'webkitFullscreenElement',
-  'mozFullscreenElement',
-  'mozFullScreenElement',
-  'msFullscreenElement',
   'webkitCurrentFullScreenElement',
 ];
 
@@ -102,16 +79,8 @@ let external_function_parent = (function_id) => async (...args) => {
   });
 };
 
-let enable_selector = (element, key) => {
-  element.dataset[key] = true;
-};
-let disable_selector = (element, key) => {
-  delete element.dataset[key];
-};
-
 // Insert requestFullScreen mock
 const code_to_insert_in_page = on_webpage`{
-  // Alliases for different browsers
   let requestFullscreen_aliasses = ${JSON.stringify(
     requestFullscreen_aliasses
   )};
@@ -127,9 +96,6 @@ const code_to_insert_in_page = on_webpage`{
       cancelBubble: false,
       cancelable: false,
     });
-    // if (element[\`on\${type}\`]) {
-    //   element[\`on\${type}\`](event);
-    // }
     element.dispatchEvent(event);
   };
 
@@ -184,9 +150,7 @@ const code_to_insert_in_page = on_webpage`{
           writable: true,
         });
       }
-    } catch (err) {
-      // Nothing
-    }
+    } catch (err) {}
   }
 
   let set_fullscreen_element = (element = null) => {
@@ -194,8 +158,8 @@ const code_to_insert_in_page = on_webpage`{
       throw new Error('WINDOWED: Got null in set_fullscreen_element');
     }
 
-    overwrite(document, 'webkitIsFullScreen', true); // Old old old
-    overwrite(document, 'fullscreen', true); // Old old old
+    overwrite(document, 'webkitIsFullScreen', true);
+    overwrite(document, 'fullscreen', true); 
     for (let fullscreenelement_alias of fullscreenelement_aliasses) {
       overwrite(document, fullscreenelement_alias, element);
     }
@@ -220,7 +184,6 @@ const code_to_insert_in_page = on_webpage`{
 		
 		let host = window.location.host;
     let disabled = await browser.storage.sync.get([host]);
-    // let is_enabled = await send_chrome_message({ type: 'is_windowed_enabled' });
     if (disabled[host] === true) {
       return 'NOT_ENABLED';
     }
@@ -239,7 +202,7 @@ const code_to_insert_in_page = on_webpage`{
           : 'translateX(-100%)';
 
       let popup = createElementFromHTML(`
-        <div class="${popup_class}" style="
+        <div class="tanchu" style="
           position: absolute;
           top: ${last_click_y}px;
           left: ${last_click_x}px;
@@ -269,11 +232,11 @@ const code_to_insert_in_page = on_webpage`{
               right: 0; bottom: 0;
               background-color: rgba(0,0,0,.8);
               pointer-events: none;
-              z-index: ${max_z_index};
+              z-index: 2147483647;
             "
           ></div>
 
-          <div class="${popup_class}" style="
+          <div class="tanchu" style="
             position: fixed;
             top: 25vh;
             left: 50vw;
@@ -301,7 +264,7 @@ const code_to_insert_in_page = on_webpage`{
 		}
 		
 		let result = await new Promise((resolve) => {
-      for (let button of document.querySelectorAll(`.${popup_class} [data-target]`)) {
+      for (let button of document.querySelectorAll(`.tanchu [data-target]`)) {
         button.addEventListener(
           'click',
           (e) => {
@@ -317,8 +280,8 @@ const code_to_insert_in_page = on_webpage`{
 		clear_popup();
 
 		if (result === 'normal') {
-      let element = document.querySelector(`[data-${fullscreen_select}]`);
-      disable_selector(element, fullscreen_select);
+      let element = document.querySelector(`[data-xuanxiang]`);
+      delete element.dataset['xuanxiang'];
 
       element.webkitRequestFullScreen();
       return 'NORMAL';
@@ -341,7 +304,7 @@ const code_to_insert_in_page = on_webpage`{
 	
 	
   let exitFullscreen = async function(original) {
-    let windowed_fullscreen = document.querySelector('[data-${fullscreen_active}]');
+    let windowed_fullscreen = document.querySelector('[data-qidong]');
 
     if (windowed_fullscreen) {
       // If the fullscreen element is a frame, tell it to exit fullscreen too
@@ -367,31 +330,26 @@ const code_to_insert_in_page = on_webpage`{
   ${'' /* NOTE requestFullscreen */}
   const requestFullscreen = async function(original, ...args) {
     const element = this;
-    element.dataset['${fullscreen_select}'] = true;
+    element.dataset['xuanxiang'] = true;
 
-    // Tell extension code (outside of this block) to go into fullscreen
-    // window.postMessage({ type: force ? "enter_fullscreen" : "show_fullscreen_popup" }, "*");
-    // send_windowed_event(element, force ? "enter_fullscreen" : "show_fullscreen_popup");
     try {
       let next = await create_popup();
       if (next === 'NOT_ENABLED') {
         original();
       }
     } catch (err) {
-      // Anything gone wrong, we default to normal fullscreen
       console.error('[Windowed] Something went wrong, so I default to normal fullscreen:', err.stack);
       original();
     }
   }
 
   let finish_fullscreen = () => {
-    // Because youtube actually checks for those sizes?!
     const window_width = Math.max(window.outerWidth, window.innerWidth);
     const window_height = Math.max(window.outerHeight, window.innerHeight);
     overwrite(window.screen, 'width', window_width);
     overwrite(window.screen, 'height', window_height);
 
-    let element = document.querySelector('[data-${fullscreen_select}]');
+    let element = document.querySelector('[data-xuanxiang]');
     if (element == null) {
       console.log('[WINDOWED] Strange, no fullscreen element shown');
       return;
@@ -418,15 +376,14 @@ const code_to_insert_in_page = on_webpage`{
 
     if (frame != null && message.data) {
       if (message.data.type === 'enter_winfull_iframe') {
-        frame.dataset['${fullscreen_select}'] = true;
+        frame.dataset['xuanxiang'] = true;
         make_tab_go_winfull();
       }
       if (message.data.type === 'enter_fullscreen_iframe') {
-        frame.dataset['${fullscreen_select}'] = true;
+        frame.dataset['xuanxiang'] = true;
         make_tab_go_fullscreen();
       }
       if (message.data.type === 'exit_fullscreen_iframe') {
-        // Call my exitFullscreen on the document
         exitFullscreen.call(document, original_exitFullscreen);
       }
     }
@@ -494,7 +451,7 @@ let delay = (ms) => {
 let create_style_rule = () => {
 	
   let css = `
-    [data-${body_class}] [data-${fullscreen_active}] {
+    [data-zhuti] [data-qidong] {
       position: fixed !important;
       top: 0 !important;
       bottom: 0 !important;
@@ -502,19 +459,19 @@ let create_style_rule = () => {
       left: 0 !important;
       width: 100%;
       height: 100%;
-      z-index: ${max_z_index} !important;
+      z-index: 2147483647 !important;
     }
 
-    [data-${body_class}] [data-${fullscreen_parent}] {
+    [data-zhuti] [data-fulei] {
       /* This thing is css black magic */
       all: initial !important;
-      z-index: ${max_z_index} !important;
+      z-index: 2147483647 !important;
 
       /* Debugging */
       background-color: rgba(0,0,0,.1) !important;
     }
 
-    .${popup_class} {
+    .tanchu {
       background:rgba(0,0,0,0.6);
       border-radius: 3px;
 			border: solid #eee 1px;
@@ -525,10 +482,10 @@ let create_style_rule = () => {
       font-size: 12px;
       color: black;
       min-width: 40px;
-      z-index: ${max_z_index};
+      z-index: 2147483647;
     }
 
-    .${popup_class} [data-target] {
+    .tanchu [data-target] {
       cursor: pointer;
       padding: 1.25em;
       padding-top: 0.25em;
@@ -540,12 +497,12 @@ let create_style_rule = () => {
       align-items: center;
     }
 
-    .${popup_class} [data-target] > img {
+    .tanchu [data-target] > img {
       height: 0.8em;
       margin-right: 1em;
     }
 
-    .${popup_class} [data-target]:hover {
+    .tanchu [data-target]:hover {
       filter: brightness(0.6);
     }
   `;
@@ -623,7 +580,7 @@ let addStyleString = (str) => {
 let go_win_full = async () => {
   create_style_rule();
   clear_listeners();
-  let element = document.querySelector(`[data-${fullscreen_select}]`);
+  let element = document.querySelector(`[data-xuanxiang]`);
 
   let escape_listener = (e) => {
     if (!e.defaultPrevented && e.which === 27) {
@@ -642,10 +599,10 @@ let go_win_full = async () => {
     window.removeEventListener('beforeunload', beforeunload_listener);
   };
 
-  enable_selector(element, fullscreen_active);
+  element.dataset['qidong'] = true;
   // Add fullscreen class to every parent of our fullscreen element
   for (let parent_element of parent_elements(element)) {
-    enable_selector(parent_element, fullscreen_parent);
+    parent_element.dataset['fulei'] = true;
   }
 
   if (window.parent !== window) {
@@ -656,19 +613,19 @@ let go_win_full = async () => {
   window.postMessage({ type: 'WINDOWED-confirm-fullscreen' }, '*');
 
   // Add no scroll to the body and let everything kick in
-  enable_selector(document.body, body_class);
+  document.body.dataset['zhuti'] = true;
 }
 
 
 let go_out_of_fullscreen = async () => {
   // Remove no scroll from body (and remove all styles)
-  disable_selector(document.body, body_class);
+  delete document.body.dataset['zhuti'];
 
   // Remove fullscreen class... from everything
   for (let element of document.querySelectorAll(
-    `[data-${fullscreen_parent}]`
+    `[data-fulei]`
   )) {
-    disable_selector(element, fullscreen_parent);
+    delete element.dataset['fulei'];
   }
 
   clear_listeners();
@@ -676,10 +633,10 @@ let go_out_of_fullscreen = async () => {
   send_fullscreen_events();
 
   const fullscreen_element = document.querySelector(
-    `[data-${fullscreen_select}]`
+    `[data-xuanxiang]`
   );
-  disable_selector(fullscreen_element, fullscreen_select);
-  disable_selector(fullscreen_element, fullscreen_active);
+  delete fullscreen_element.dataset['xuanxiang'];
+  delete fullscreen_element.dataset['xuanxiang'];
 
   // If we are a frame, tell the parent frame to exit fullscreen
   window.parent.postMessage({ type: 'exit_fullscreen_iframe' }, '*');
@@ -688,7 +645,7 @@ let go_out_of_fullscreen = async () => {
 
 external_functions.is_fullscreen = () => {
   const fullscreen_element = document.querySelector(
-    `[data-${fullscreen_active}]`
+    `[data-qidong]`
   );
   return fullscreen_element != null;
 };
